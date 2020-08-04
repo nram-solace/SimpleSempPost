@@ -1,16 +1,28 @@
 #!/usr/bin/python
-
 #--------------------------------------------------------------------------------
 # SimpleSempPost.py
 # 
-# Solace SEMP Post
+# Solace SEMP XML HTTP POST
 # Open HTTP connection to Solace broker and post list of SEMP requests
 # time the processing for each
+#
+# Compatibility:
+#  Python 3.6 - Works
+#  Python 2.7 - Broken
+#  Open and Post use urllib
+#  Open2 and Post2 use urllib2
+#
+# TODO
+#  Compression (Accept-Encoding: gzip)
+#  Neither urllib nor urllib2 seem to support it.
+#  See https://bugs.python.org/issue9500
 #
 # Ramesh Natarajan, Solace PSG
 # Jul 31, 2020
 #--------------------------------------------------------------------------------
-import argparse, getpass, sys, logging, inspect, string, base64, httplib, time, pprint, gzip
+import argparse, getpass, sys, logging, inspect, string, base64, time, pprint, gzip
+#import httplib
+import httplib2, urllib
 import xml.etree.ElementTree as ET
 
 me = "SimpleSempPost.py"
@@ -37,13 +49,15 @@ class SimpleSEMP:
         self.m_user = user
         self.m_passwd = passwd
         self.m_url = url
+        self.m_hosturl = "{}{}".format(host,url)
         self.m_req = None
         self.m_resp = None
         self.m_xml = None
         self.m_xml_more = None
         self.m_statsfile = "./stats.out"
         self.m_logger.debug("SimpleSEMP initialzed")
-        self.Open()
+        self.m_hdrs = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+        self.Open2()
 
     #-------------------------------------------------------------------------------
     # open HTTP connection
@@ -63,6 +77,16 @@ class SimpleSEMP:
             self.m_logger.exception("Unexpected exception %s", sys.exc_info()[0])
             raise
         return self.m_conn
+
+    def Open2(self):
+        log = self.m_logger  
+        self.m_http = httplib2.Http()
+        self.m_http.add_credentials(self.m_user, self.m_passwd)
+        log.debug ("Opening to URL: %s", format(self.m_hosturl))
+        log.debug("User: %s, Pass: %s", self.m_user, self.m_passwd)
+        log.debug("headers: %s", self.m_hdrs)
+        return
+
 
     #-------------------------------------------------------
     # Post a SEMP Reqquest and return response and elapsed time
@@ -87,6 +111,20 @@ class SimpleSEMP:
             return None
         return self.m_resp, t1 - t0
 
+    def Post2(self, req):
+        log = self.m_logger  
+        log.debug("POSTing request: %s", req)
+        t0 = time.time()
+        rhdr, self.m_resp = self.m_http.request(self.m_hosturl, 
+            "POST", 
+            headers=self.m_hdrs,
+            body=req )
+        t1 = time.time()
+
+        log.debug("response : %s", self.m_resp)
+        log.debug("content  : %s",self.m_resp)
+        return self.m_resp, t1 - t0
+ 
     #--------------------------------------------------------------------------------------------
     # Read list of XML SEMP requests (one per line) and return a list
     #
@@ -106,7 +144,8 @@ class SimpleSEMP:
         log.debug("data: \"%s\"", data)
         try:
             f = open (fname, "w")
-            print >>f, data
+            #print >>f, data
+            print(data, file=f)
             f.close()
         except IOError as ex:
             log.exception (ex)
@@ -142,7 +181,8 @@ class SimpleSEMP:
         log = self.m_logger
         try:
             f = open (self.m_statsfile, "a")
-            print >>f, data
+            #print >>f, data
+            print (data, file=f)
             f.close()
             log.info("Updating stats file: %s with %s", self.m_statsfile, data)
         except IOError as ex:
@@ -151,8 +191,6 @@ class SimpleSEMP:
         except:
             log.exception ('Unexpected exception', sys.exc_info()[0])
             raise
-
-
 
 #--------------------------------------------------------------------------------------------
 # initialize logging
@@ -163,9 +201,6 @@ def SetupLogging(prog, verbose):
     else:
         logging.basicConfig(format='%(asctime)s : <%(name)s> [%(levelname)s] %(message)s', level=logging.INFO)
     return logging.getLogger(prog)
-
-
-
 
 #--------------------------------------------------------------------------------------------
 # main
@@ -185,7 +220,7 @@ def main(argv):
     p.add_argument('--reqfile', dest='reqfile', required=False)
     p.add_argument('--outdir', dest='outdir', default='.')
     p.add_argument('--tag', dest='tag', default='test')
-    p.add_argument('-v','--verbose', action="count")
+    p.add_argument('-v','--verbose', action="count", default=0)
 
     r = p.parse_args()
 
@@ -205,23 +240,30 @@ def main(argv):
         log.debug("SEMP Reqests Read: %s", semp_requests)
     i = 0
     total_time = 0
+    npost = 0
+    t0 = time.time()
     for req in semp_requests:
         i = i+1
         m = 0
         log.info("Sending SEMP request-%d: %s", i, req)
-        resp, td = semp.Post(req)
+        resp, td = semp.Post2(req)
+        npost = npost + 1
         total_time = total_time + td
         log.info("Got Response in %f seconds", td)
         fname = "{}/response-{}.{}.xml".format(r.outdir,i,m)
         semp.Save(fname)
         while (semp.More() is not None):
             m = m+1
-            resp, td = semp.Post(semp.More())
+            resp, td = semp.Post2(semp.More())
+            npost = npost + 1
             log.info("Got more Response (%d) in %f seconds", m, td)
             semp.Save("{}/response-{}.{}.xml".format(r.outdir,i,m))
-        
-    log.info ("Total time take: %s seconds", total_time)
-    semp.WriteStats("{}: {}: {}".format(r.tag, r.reqfile, total_time))
+    t1 = time.time()
+    
+    log.info ("Total POSTs        : %s", npost)
+    log.info ("Time spent in POST : %s seconds", total_time)
+    log.info ("Elapsed time       : %s", t1 - t0)
+    semp.WriteStats("{}: {}: {}: {}: {}".format(r.tag, r.reqfile, npost, total_time, t1 - t0))
 
 if __name__ == "__main__":
        main(sys.argv[1:])
