@@ -1,0 +1,11 @@
+<rpc-reply semp-version="soltr/9_5">
+  <rpc>
+    <show>
+      <hostname>
+        <hostname>Appliance-A</hostname>
+        <deferred-hostname>Appliance-A</deferred-hostname>
+      </hostname>
+    </show>
+  </rpc>
+<execute-result code="ok"/>
+</rpc-reply>

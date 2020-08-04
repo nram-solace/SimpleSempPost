@@ -1,0 +1,10 @@
+<rpc semp-version='soltr/9_5'><show><message-spool><detail/></message-spool></show></rpc>
+<rpc semp-version='soltr/9_5'><show><message-vpn><vpn-name>PSG_TEST</vpn-name><replication/></message-vpn></show></rpc>
+<rpc semp-version='soltr/9_5'><show><queue><name>*</name><vpn-name>PSG_TEST</vpn-name><durable/><detail/><count></count><num-elements>500</num-elements></queue></show></rpc>
+<rpc semp-version='soltr/9_5'><show><topic-endpoint><name>*</name><vpn-name>PSG_TEST</vpn-name><durable/><detail/><count></count><num-elements>500</num-elements></topic-endpoint></show></rpc>
+<rpc semp-version='soltr/9_5'><show><queue><name>*</name><vpn-name>PSG_TEST</vpn-name><rates/><durable/><count></count><num-elements>500</num-elements></queue></show></rpc>
+<rpc semp-version='soltr/9_5'><show><queue><name>*</name><vpn-name>PSG_TEST</vpn-name><stats/><durable/><count></count><num-elements>500</num-elements></queue></show></rpc>
+<rpc semp-version='soltr/9_5'><show><topic-endpoint><name>*</name><vpn-name>PSG_TEST</vpn-name><rates/><durable/><count></count><num-elements>500</num-elements></topic-endpoint></show></rpc>
+<rpc semp-version='soltr/9_5'><show><topic-endpoint><name>*</name><vpn-name>PSG_TEST</vpn-name><stats/><durable/><count></count><num-elements>500</num-elements></topic-endpoint></show></rpc>
+<rpc semp-version='soltr/9_5'><show><message-spool><vpn-name>PSG_TEST</vpn-name></message-spool></show></rpc>
+<rpc semp-version='soltr/9_5'><show><message-vpn><vpn-name>PSG_TEST</vpn-name><stats/></message-vpn></show></rpc>
